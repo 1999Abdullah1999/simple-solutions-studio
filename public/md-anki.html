@@ -936,6 +936,30 @@ function wrapSections() {
     wrapper.appendChild(actions);
     preview.appendChild(wrapper);
   });
+  updateActiveSectionActions();
+}
+
+function getMostVisibleSection() {
+  const wrappers = Array.from(preview.querySelectorAll('.section-wrapper'));
+  if (!wrappers.length) return null;
+  const panel = previewScroll.getBoundingClientRect();
+  const focusY = panel.top + Math.min(panel.height * 0.28, 180);
+  let best = null;
+  let bestScore = -Infinity;
+  wrappers.forEach(w => {
+    const r = w.getBoundingClientRect();
+    const visible = Math.min(r.bottom, panel.bottom) - Math.max(r.top, panel.top);
+    if (visible <= 0) return;
+    const distance = Math.abs((r.top + r.bottom) / 2 - focusY);
+    const score = visible - distance * 0.25;
+    if (score > bestScore) { bestScore = score; best = w; }
+  });
+  return best;
+}
+
+function updateActiveSectionActions() {
+  const active = hoveredSection || getMostVisibleSection();
+  preview.querySelectorAll('.section-wrapper').forEach(w => w.classList.toggle('is-active', w === active));
 }
 
 // ============ IMAGE CAPTURE ============
