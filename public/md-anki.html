@@ -511,8 +511,9 @@ body.rtl-default #editor { direction: rtl; text-align: right; }
     </div>
 
     <div class="setting-row">
-      <div class="setting-label"><span>Padding</span><span class="setting-value" id="paddingValue">28px</span></div>
-      <input type="range" id="paddingSlider" min="10" max="60" step="5" value="28" oninput="updateSetting('padding')">
+      <div class="setting-label"><span>Padding</span><span class="setting-value" id="paddingValue">16px</span></div>
+      <input type="range" id="paddingSlider" min="0" max="60" step="2" value="16" oninput="updateSetting('padding')">
+      <div style="font-size:0.7rem;color:var(--text-secondary);margin-top:4px;">يُستخدم هامش أصغر تلقائياً عند تصدير قسم منفرد لتقليل المساحة الفارغة على Anki.</div>
     </div>
 
     <div class="setting-row toggle-row">
@@ -523,6 +524,11 @@ body.rtl-default #editor { direction: rtl; text-align: right; }
     <div class="setting-row toggle-row">
       <label for="arrowToggle" style="font-size:0.85rem;font-weight:600;cursor:pointer;">Smart arrows (-&gt; → →)</label>
       <input type="checkbox" id="arrowToggle" checked>
+    </div>
+
+    <div class="setting-row toggle-row">
+      <label for="rtlAutoToggle" style="font-size:0.85rem;font-weight:600;cursor:pointer;">RTL تلقائي عند غلبة العربية</label>
+      <input type="checkbox" id="rtlAutoToggle" checked>
     </div>
 
     <div class="setting-row toggle-row">
@@ -539,11 +545,39 @@ body.rtl-default #editor { direction: rtl; text-align: right; }
         اضغط هنا ثم اضغط أي زر لتعيينه
       </button>
       <div style="font-size:0.72rem;color:var(--text-secondary);margin-top:4px;line-height:1.5;">
-        عند الضغط على هذا الزر في أي مكان: يلصق نص الحافظة في المحرر بدل القديم ويفتح المعاينة مباشرة.
+        يلصق نص الحافظة في المحرر ويفتح المعاينة مباشرة.
+      </div>
+    </div>
+
+    <div class="setting-row">
+      <div class="setting-label">
+        <span>زر نسخ السيكشن تحت المؤشر</span>
+        <span class="setting-value" id="sectionKeyValue">C</span>
+      </div>
+      <button type="button" id="sectionKeyBtn" class="header-btn" style="width:100%;justify-content:center;margin-top:6px;">
+        اضغط هنا ثم اضغط أي زر لتعيينه
+      </button>
+      <div style="font-size:0.72rem;color:var(--text-secondary);margin-top:4px;line-height:1.5;">
+        مرّر بالماوس فوق أي سيكشن في المعاينة واضغط هذا الزر لنسخ صورته للحافظة.
       </div>
     </div>
 
     <button class="modal-done-btn" onclick="toggleSettings()">Done</button>
+  </div>
+</div>
+
+<!-- ============ HISTORY MODAL ============ -->
+<div class="modal-overlay" id="historyModal" onclick="closeHistoryOutside(event)">
+  <div class="modal-panel" style="max-width:560px;">
+    <div class="modal-title">📜 السجل (آخر اللصقات)</div>
+    <div style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:8px;">
+      اضغط أي عنصر لتحميله في المحرر. محفوظ محلياً في متصفحك فقط — مجاناً وبدون قاعدة بيانات.
+    </div>
+    <div class="history-list" id="historyList"></div>
+    <div style="display:flex;gap:8px;">
+      <button class="header-btn btn-clear" style="flex:1;justify-content:center;" onclick="clearHistory()">🗑️ مسح الكل</button>
+      <button class="modal-done-btn" style="flex:1;margin-top:0;" onclick="toggleHistory()">إغلاق</button>
+    </div>
   </div>
 </div>
 
