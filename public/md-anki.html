@@ -1092,15 +1092,19 @@ function updateSetting(type) {
   if (type === 'scale') {
     CONFIG.scale = parseFloat(document.getElementById('scaleSlider').value);
     document.getElementById('scaleValue').textContent = CONFIG.scale + 'x';
+    try { localStorage.setItem('md-anki-scale', String(CONFIG.scale)); } catch(e) {}
   } else if (type === 'width') {
     CONFIG.maxWidth = parseInt(document.getElementById('widthSlider').value);
     document.getElementById('widthValue').textContent = CONFIG.maxWidth + 'px';
+    try { localStorage.setItem('md-anki-width', String(CONFIG.maxWidth)); } catch(e) {}
   } else if (type === 'fontSize') {
     CONFIG.fontSize = parseInt(document.getElementById('fontSizeSlider').value);
     document.getElementById('fontSizeValue').textContent = CONFIG.fontSize + 'px';
+    try { localStorage.setItem('md-anki-fontsize', String(CONFIG.fontSize)); } catch(e) {}
   } else if (type === 'padding') {
     CONFIG.padding = parseInt(document.getElementById('paddingSlider').value);
     document.getElementById('paddingValue').textContent = CONFIG.padding + 'px';
+    try { localStorage.setItem('md-anki-padding', String(CONFIG.padding)); } catch(e) {}
   }
 }
 function formatKeyName(k) {
