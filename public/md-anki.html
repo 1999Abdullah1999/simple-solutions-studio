@@ -802,6 +802,7 @@ function debouncedRender() {
 function renderMarkdown() {
   const md = editor.value;
   charCount.textContent = md.length + ' chars';
+  applyRTLAutoFromText(md);
   preview.innerHTML = marked.parse(md);
   preview.querySelectorAll('pre code').forEach(block => {
     if (!block.classList.contains('hljs')) hljs.highlightElement(block);
@@ -819,6 +820,24 @@ function applyDirAuto(root) {
   root.querySelectorAll(sel).forEach(el => {
     if (!el.hasAttribute('dir')) el.setAttribute('dir', 'auto');
   });
+}
+
+// Detect if Arabic is dominant in the text; flip body to RTL-default UI hint.
+const ARABIC_RE = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/g;
+const LATIN_RE  = /[A-Za-z]/g;
+function isArabicDominant(text) {
+  if (!text) return false;
+  const ar = (text.match(ARABIC_RE) || []).length;
+  const la = (text.match(LATIN_RE) || []).length;
+  if (ar + la < 3) return false;
+  return ar / (ar + la) >= 0.4;
+}
+function applyRTLAutoFromText(text) {
+  if (!CONFIG.rtlAuto) { document.body.classList.remove('rtl-default'); preview.setAttribute('dir','auto'); return; }
+  const rtl = isArabicDominant(text);
+  document.body.classList.toggle('rtl-default', rtl);
+  preview.setAttribute('dir', rtl ? 'rtl' : 'auto');
+  editor.setAttribute('dir', rtl ? 'rtl' : 'auto');
 }
 
 // ============ SECTION WRAPPING ============
