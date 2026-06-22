@@ -297,6 +297,8 @@ body.mode-split .editor-panel { border-right: 1px solid var(--border); }
 .md-body hr { border: none; height: 2px; background: var(--border); margin: 2em 0; }
 .md-body img { max-width: 100%; border-radius: 8px; margin: 0.5em 0; }
 
+.md-body * { scroll-margin-top: 12px; }
+
 /* ============ SECTION WRAPPERS ============ */
 .section-wrapper {
   position: relative;
@@ -338,6 +340,25 @@ body.no-section-actions .section-actions { display: none !important; }
 .section-btn:active { transform: scale(0.96); }
 .section-btn.section-copy { background: #eab308; color: #1a1a2e; }
 .section-btn.section-save { background: var(--accent); }
+
+@media (max-width: 767px), (hover: none), (pointer: coarse) {
+  .section-actions {
+    position: sticky;
+    top: 6px;
+    justify-content: flex-end;
+    margin-bottom: 4px;
+  }
+  .section-wrapper.is-active .section-actions { display: flex; }
+}
+
+@media (max-width: 767px) {
+  .modal-overlay { padding: 10px 0; }
+  .modal-panel {
+    width: calc(100% - 16px);
+    max-height: calc(100dvh - 20px);
+    padding: 18px;
+  }
+}
 
 /* ============ SETTINGS MODAL ============ */
 .modal-overlay {
