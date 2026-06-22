@@ -707,6 +707,28 @@ function normalizeArrowToken(tok) {
   for (const [re, ch] of ARROW_RULES) { re.lastIndex = 0; if (re.test(tok)) return ch; }
   return tok;
 }
+// Mirror map: in RTL context, "→" written by an Arabic speaker should visually
+// point to the right of reading flow (which is leftward on screen).
+const ARROW_MIRROR_RTL = { '→':'←', '←':'→', '⇒':'⇐', '⇐':'⇒' };
+function mirrorForRTL(ch) { return ARROW_MIRROR_RTL[ch] || ch; }
+// Find effective direction of an element by walking up to find a dir= or the body.
+function effectiveDir(el) {
+  let cur = el;
+  while (cur && cur.nodeType === 1) {
+    const d = cur.getAttribute && cur.getAttribute('dir');
+    if (d === 'rtl') return 'rtl';
+    if (d === 'ltr') return 'ltr';
+    if (d === 'auto') {
+      // Use computed direction (browser resolves "auto" against first strong char).
+      try {
+        const cd = getComputedStyle(cur).direction;
+        if (cd === 'rtl' || cd === 'ltr') return cd;
+      } catch(e) {}
+    }
+    cur = cur.parentNode;
+  }
+  return 'ltr';
+}
 function replaceArrowsInTextNodes(root) {
   if (!CONFIG.smartArrows) return;
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
@@ -732,14 +754,17 @@ function replaceArrowsInTextNodes(root) {
     const v = node.nodeValue;
     if (!ARROW_TOKEN_RE.test(v)) return;
     ARROW_TOKEN_RE.lastIndex = 0;
+    const parentDir = effectiveDir(node.parentNode);
     const frag = document.createDocumentFragment();
     let last = 0; let m;
     while ((m = ARROW_TOKEN_RE.exec(v)) !== null) {
       if (m.index > last) frag.appendChild(document.createTextNode(v.slice(last, m.index)));
       const span = document.createElement('span');
       span.className = 'arrow';
-      span.setAttribute('dir', 'ltr');
-      span.textContent = normalizeArrowToken(m[0]);
+      span.setAttribute('dir', parentDir);
+      let ch = normalizeArrowToken(m[0]);
+      if (parentDir === 'rtl') ch = mirrorForRTL(ch);
+      span.textContent = ch;
       frag.appendChild(span);
       last = m.index + m[0].length;
     }
