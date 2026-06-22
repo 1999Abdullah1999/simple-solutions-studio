@@ -297,6 +297,8 @@ body.mode-split .editor-panel { border-right: 1px solid var(--border); }
 .md-body hr { border: none; height: 2px; background: var(--border); margin: 2em 0; }
 .md-body img { max-width: 100%; border-radius: 8px; margin: 0.5em 0; }
 
+.md-body * { scroll-margin-top: 12px; }
+
 /* ============ SECTION WRAPPERS ============ */
 .section-wrapper {
   position: relative;
@@ -306,19 +308,24 @@ body.mode-split .editor-panel { border-right: 1px solid var(--border); }
   transition: border-color 0.2s, background 0.2s;
   unicode-bidi: plaintext;
 }
-.section-wrapper:hover {
+.section-wrapper:hover,
+.section-wrapper.is-active {
   border-color: var(--section-border);
   background: var(--section-hover);
 }
 .section-actions {
-  position: absolute;
+  position: sticky;
   top: 6px;
-  inset-inline-end: 6px;
   display: none;
   gap: 4px;
-  z-index: 5;
+  width: max-content;
+  margin-inline-start: auto;
+  margin-bottom: -28px;
+  z-index: 30;
+  pointer-events: auto;
 }
-.section-wrapper:hover .section-actions { display: inline-flex; }
+.section-wrapper:hover .section-actions,
+.section-wrapper.is-active .section-actions { display: inline-flex; }
 body.no-section-actions .section-actions { display: none !important; }
 
 .section-btn {
@@ -336,13 +343,30 @@ body.no-section-actions .section-actions { display: none !important; }
 .section-btn.section-copy { background: #eab308; color: #1a1a2e; }
 .section-btn.section-save { background: var(--accent); }
 
+@media (max-width: 767px), (hover: none), (pointer: coarse) {
+  .section-wrapper.is-active .section-actions { display: flex; }
+}
+
+@media (max-width: 767px) {
+  .modal-overlay { padding: 10px 0; }
+  .modal-panel {
+    width: calc(100% - 16px);
+    max-height: calc(100dvh - 20px);
+    padding: 18px;
+  }
+}
+
 /* ============ SETTINGS MODAL ============ */
 .modal-overlay {
   position: fixed; inset: 0;
   background: rgba(0,0,0,0.6);
   backdrop-filter: blur(4px);
-  display: flex; align-items: center; justify-content: center;
+  display: flex; align-items: flex-start; justify-content: center;
   z-index: 100; opacity: 0; visibility: hidden;
+  overflow-y: auto;
+  padding: 16px 0;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   transition: all 0.25s;
 }
 .modal-overlay.open { opacity: 1; visibility: visible; }
@@ -351,6 +375,9 @@ body.no-section-actions .section-actions { display: none !important; }
   border: 1px solid var(--border);
   border-radius: 14px; padding: 28px;
   width: 92%; max-width: 440px;
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   box-shadow: 0 20px 60px rgba(0,0,0,0.4);
   transform: translateY(20px);
   transition: transform 0.25s;
@@ -861,26 +888,27 @@ function wrapSections() {
   const children = Array.from(preview.children);
   if (children.length === 0) return;
 
-  const hasHeadings = children.some(c => /^H[1-3]$/.test(c.tagName));
-  if (!hasHeadings) return;
-
   const groups = [];
-  let currentGroup = [];
-  children.forEach(child => {
-    const tag = child.tagName;
-    if ((tag === 'H1' || tag === 'H2' || tag === 'H3') && currentGroup.length > 0) {
-      groups.push(currentGroup); currentGroup = [];
-    }
-    currentGroup.push(child);
-  });
-  if (currentGroup.length > 0) groups.push(currentGroup);
+  const hasHeadings = children.some(c => /^H[1-3]$/.test(c.tagName));
+  if (hasHeadings) {
+    let currentGroup = [];
+    children.forEach(child => {
+      const tag = child.tagName;
+      if ((tag === 'H1' || tag === 'H2' || tag === 'H3') && currentGroup.length > 0) {
+        groups.push(currentGroup); currentGroup = [];
+      }
+      currentGroup.push(child);
+    });
+    if (currentGroup.length > 0) groups.push(currentGroup);
+  } else {
+    children.forEach(child => groups.push([child]));
+  }
 
   preview.innerHTML = '';
   groups.forEach(group => {
     const wrapper = document.createElement('div');
     wrapper.className = 'section-wrapper';
     wrapper.setAttribute('dir', 'auto');
-    group.forEach(el => wrapper.appendChild(el));
 
     const actions = document.createElement('div');
     actions.className = 'section-actions';
@@ -903,8 +931,33 @@ function wrapSections() {
     actions.appendChild(copyBtn);
     actions.appendChild(saveBtn);
     wrapper.appendChild(actions);
+    group.forEach(el => wrapper.appendChild(el));
     preview.appendChild(wrapper);
   });
+  updateActiveSectionActions();
+}
+
+function getMostVisibleSection() {
+  const wrappers = Array.from(preview.querySelectorAll('.section-wrapper'));
+  if (!wrappers.length) return null;
+  const panel = previewScroll.getBoundingClientRect();
+  const focusY = panel.top + Math.min(panel.height * 0.28, 180);
+  let best = null;
+  let bestScore = -Infinity;
+  wrappers.forEach(w => {
+    const r = w.getBoundingClientRect();
+    const visible = Math.min(r.bottom, panel.bottom) - Math.max(r.top, panel.top);
+    if (visible <= 0) return;
+    const distance = Math.abs((r.top + r.bottom) / 2 - focusY);
+    const score = visible - distance * 0.25;
+    if (score > bestScore) { bestScore = score; best = w; }
+  });
+  return best;
+}
+
+function updateActiveSectionActions() {
+  const active = hoveredSection || getMostVisibleSection();
+  preview.querySelectorAll('.section-wrapper').forEach(w => w.classList.toggle('is-active', w === active));
 }
 
 // ============ IMAGE CAPTURE ============
@@ -1171,19 +1224,22 @@ document.addEventListener('DOMContentLoaded', () => {
   bindKeyCapture(magicBtn, magicVal, 'magicKey', 'md-anki-magickey');
   bindKeyCapture(secKeyBtn, secKeyVal, 'sectionCopyKey', 'md-anki-seckey');
   applySectionActionsVisibility();
+  updateActiveSectionActions();
 });
 
 // Track hovered section for the section-copy hotkey.
 let hoveredSection = null;
 document.addEventListener('mouseover', (e) => {
   const w = e.target.closest && e.target.closest('.section-wrapper');
-  if (w) hoveredSection = w;
+  if (w) { hoveredSection = w; updateActiveSectionActions(); }
 });
 document.addEventListener('mouseout', (e) => {
   if (!e.relatedTarget || !e.relatedTarget.closest || !e.relatedTarget.closest('.section-wrapper')) {
     hoveredSection = null;
+    updateActiveSectionActions();
   }
 });
+previewScroll.addEventListener('scroll', () => requestAnimationFrame(updateActiveSectionActions), { passive: true });
 
 // ============ TOAST ============
 let toastTimer;
