@@ -598,12 +598,16 @@ const CONFIG = {
   scale: 2,
   maxWidth: 1024,
   fontSize: 15,
-  padding: 28,
+  padding: 16,
   syncScroll: true,
   smartArrows: true,
   sectionActions: true,
+  rtlAuto: true,
   magicKey: 'Escape',
+  sectionCopyKey: 'c',
 };
+const HISTORY_KEY = 'md-anki-history';
+const HISTORY_MAX = 30;
 
 const DEFAULT_MD = `# 📝 MD → Anki: Markdown Preview & Exporter
 
