@@ -387,10 +387,43 @@ input[type="range"]::-moz-range-thumb { width: 18px; height: 18px; border-radius
 .toast.success { border-left: 4px solid #22c55e; }
 .toast.error { border-left: 4px solid #ef4444; }
 .toast.neutral { border-left: 4px solid var(--accent); }
-/* Arrow tokens: keep visual direction regardless of bidi context */
-.md-body .arrow { unicode-bidi: isolate; direction: ltr; display: inline-block; }
+/* Arrow tokens: isolated so bidi doesn't merge them with neighbours,
+   but they follow their parent block's direction (so in Arabic blocks → becomes ← visually
+   because we swap the character based on parent direction). */
+.md-body .arrow { unicode-bidi: isolate; display: inline-block; }
+.md-body .arrow[dir="ltr"] { direction: ltr; }
+.md-body .arrow[dir="rtl"] { direction: rtl; }
 /* KaTeX inside RTL paragraphs: keep math LTR */
 .md-body .katex, .md-body .katex-display { direction: ltr; unicode-bidi: isolate; }
+
+/* Push settings to extreme right with a small gap */
+.btn-settings { margin-inline-start: 6px; }
+
+/* History modal list */
+.history-list { max-height: 60vh; overflow-y: auto; margin: 8px -8px 12px; }
+.history-item {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 10px 12px; border-radius: 8px;
+  cursor: pointer; transition: background 0.15s;
+  border: 1px solid transparent;
+}
+.history-item:hover { background: var(--hover-bg); border-color: var(--border); }
+.history-item-body { flex: 1; min-width: 0; }
+.history-item-preview {
+  font-size: 0.85rem; color: var(--text-primary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  unicode-bidi: plaintext; direction: ltr;
+}
+.history-item-meta { font-size: 0.7rem; color: var(--text-secondary); margin-top: 3px; }
+.history-item-del {
+  background: transparent; border: none; color: var(--text-secondary);
+  cursor: pointer; font-size: 1rem; padding: 4px 6px; border-radius: 4px;
+}
+.history-item-del:hover { color: #ef4444; background: rgba(239,68,68,0.1); }
+.history-empty { padding: 28px 12px; text-align: center; color: var(--text-secondary); font-size: 0.85rem; }
+
+/* RTL-default editor when Arabic-dominant */
+body.rtl-default #editor { direction: rtl; text-align: right; }
 </style>
 </head>
 <body class="mode-split">
@@ -421,14 +454,17 @@ input[type="range"]::-moz-range-thumb { width: 18px; height: 18px; border-radius
   <button class="header-btn btn-copy" onclick="copyImage()" title="Copy image to clipboard">
     <span class="btn-icon">📋</span><span class="btn-label">Copy</span>
   </button>
+  <button class="header-btn" onclick="openHistory()" title="History (السجل)">
+    <span class="btn-icon">📜</span><span class="btn-label">History</span>
+  </button>
   <button class="header-btn btn-clear" onclick="clearEditor()" title="Clear editor">
     <span class="btn-icon">🗑️</span><span class="btn-label">Clear</span>
   </button>
   <button class="header-btn" onclick="toggleTheme()" id="themeBtn" title="Toggle theme">
     <span class="btn-icon" id="themeIcon">🌙</span><span class="btn-label" id="themeLabel">Dark</span>
   </button>
-  <button class="header-btn btn-settings" onclick="toggleSettings()" title="Settings">
-    <span class="btn-icon">⚙️</span><span class="btn-label">Settings</span>
+  <button class="header-btn btn-settings" onclick="toggleSettings()" title="Settings" aria-label="Settings">
+    <span class="btn-icon">⚙️</span>
   </button>
 </div>
 
@@ -475,8 +511,9 @@ input[type="range"]::-moz-range-thumb { width: 18px; height: 18px; border-radius
     </div>
 
     <div class="setting-row">
-      <div class="setting-label"><span>Padding</span><span class="setting-value" id="paddingValue">28px</span></div>
-      <input type="range" id="paddingSlider" min="10" max="60" step="5" value="28" oninput="updateSetting('padding')">
+      <div class="setting-label"><span>Padding</span><span class="setting-value" id="paddingValue">16px</span></div>
+      <input type="range" id="paddingSlider" min="0" max="60" step="2" value="16" oninput="updateSetting('padding')">
+      <div style="font-size:0.7rem;color:var(--text-secondary);margin-top:4px;">يُستخدم هامش أصغر تلقائياً عند تصدير قسم منفرد لتقليل المساحة الفارغة على Anki.</div>
     </div>
 
     <div class="setting-row toggle-row">
@@ -487,6 +524,11 @@ input[type="range"]::-moz-range-thumb { width: 18px; height: 18px; border-radius
     <div class="setting-row toggle-row">
       <label for="arrowToggle" style="font-size:0.85rem;font-weight:600;cursor:pointer;">Smart arrows (-&gt; → →)</label>
       <input type="checkbox" id="arrowToggle" checked>
+    </div>
+
+    <div class="setting-row toggle-row">
+      <label for="rtlAutoToggle" style="font-size:0.85rem;font-weight:600;cursor:pointer;">RTL تلقائي عند غلبة العربية</label>
+      <input type="checkbox" id="rtlAutoToggle" checked>
     </div>
 
     <div class="setting-row toggle-row">
@@ -503,11 +545,39 @@ input[type="range"]::-moz-range-thumb { width: 18px; height: 18px; border-radius
         اضغط هنا ثم اضغط أي زر لتعيينه
       </button>
       <div style="font-size:0.72rem;color:var(--text-secondary);margin-top:4px;line-height:1.5;">
-        عند الضغط على هذا الزر في أي مكان: يلصق نص الحافظة في المحرر بدل القديم ويفتح المعاينة مباشرة.
+        يلصق نص الحافظة في المحرر ويفتح المعاينة مباشرة.
+      </div>
+    </div>
+
+    <div class="setting-row">
+      <div class="setting-label">
+        <span>زر نسخ السيكشن تحت المؤشر</span>
+        <span class="setting-value" id="sectionKeyValue">C</span>
+      </div>
+      <button type="button" id="sectionKeyBtn" class="header-btn" style="width:100%;justify-content:center;margin-top:6px;">
+        اضغط هنا ثم اضغط أي زر لتعيينه
+      </button>
+      <div style="font-size:0.72rem;color:var(--text-secondary);margin-top:4px;line-height:1.5;">
+        مرّر بالماوس فوق أي سيكشن في المعاينة واضغط هذا الزر لنسخ صورته للحافظة.
       </div>
     </div>
 
     <button class="modal-done-btn" onclick="toggleSettings()">Done</button>
+  </div>
+</div>
+
+<!-- ============ HISTORY MODAL ============ -->
+<div class="modal-overlay" id="historyModal" onclick="closeHistoryOutside(event)">
+  <div class="modal-panel" style="max-width:560px;">
+    <div class="modal-title">📜 السجل (آخر اللصقات)</div>
+    <div style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:8px;">
+      اضغط أي عنصر لتحميله في المحرر. محفوظ محلياً في متصفحك فقط — مجاناً وبدون قاعدة بيانات.
+    </div>
+    <div class="history-list" id="historyList"></div>
+    <div style="display:flex;gap:8px;">
+      <button class="header-btn btn-clear" style="flex:1;justify-content:center;" onclick="clearHistory()">🗑️ مسح الكل</button>
+      <button class="modal-done-btn" style="flex:1;margin-top:0;" onclick="toggleHistory()">إغلاق</button>
+    </div>
   </div>
 </div>
 
@@ -528,12 +598,16 @@ const CONFIG = {
   scale: 2,
   maxWidth: 1024,
   fontSize: 15,
-  padding: 28,
+  padding: 16,
   syncScroll: true,
   smartArrows: true,
   sectionActions: true,
+  rtlAuto: true,
   magicKey: 'Escape',
+  sectionCopyKey: 'c',
 };
+const HISTORY_KEY = 'md-anki-history';
+const HISTORY_MAX = 30;
 
 const DEFAULT_MD = `# 📝 MD → Anki: Markdown Preview & Exporter
 
@@ -633,6 +707,28 @@ function normalizeArrowToken(tok) {
   for (const [re, ch] of ARROW_RULES) { re.lastIndex = 0; if (re.test(tok)) return ch; }
   return tok;
 }
+// Mirror map: in RTL context, "→" written by an Arabic speaker should visually
+// point to the right of reading flow (which is leftward on screen).
+const ARROW_MIRROR_RTL = { '→':'←', '←':'→', '⇒':'⇐', '⇐':'⇒' };
+function mirrorForRTL(ch) { return ARROW_MIRROR_RTL[ch] || ch; }
+// Find effective direction of an element by walking up to find a dir= or the body.
+function effectiveDir(el) {
+  let cur = el;
+  while (cur && cur.nodeType === 1) {
+    const d = cur.getAttribute && cur.getAttribute('dir');
+    if (d === 'rtl') return 'rtl';
+    if (d === 'ltr') return 'ltr';
+    if (d === 'auto') {
+      // Use computed direction (browser resolves "auto" against first strong char).
+      try {
+        const cd = getComputedStyle(cur).direction;
+        if (cd === 'rtl' || cd === 'ltr') return cd;
+      } catch(e) {}
+    }
+    cur = cur.parentNode;
+  }
+  return 'ltr';
+}
 function replaceArrowsInTextNodes(root) {
   if (!CONFIG.smartArrows) return;
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
@@ -658,14 +754,17 @@ function replaceArrowsInTextNodes(root) {
     const v = node.nodeValue;
     if (!ARROW_TOKEN_RE.test(v)) return;
     ARROW_TOKEN_RE.lastIndex = 0;
+    const parentDir = effectiveDir(node.parentNode);
     const frag = document.createDocumentFragment();
     let last = 0; let m;
     while ((m = ARROW_TOKEN_RE.exec(v)) !== null) {
       if (m.index > last) frag.appendChild(document.createTextNode(v.slice(last, m.index)));
       const span = document.createElement('span');
       span.className = 'arrow';
-      span.setAttribute('dir', 'ltr');
-      span.textContent = normalizeArrowToken(m[0]);
+      span.setAttribute('dir', parentDir);
+      let ch = normalizeArrowToken(m[0]);
+      if (parentDir === 'rtl') ch = mirrorForRTL(ch);
+      span.textContent = ch;
       frag.appendChild(span);
       last = m.index + m[0].length;
     }
@@ -703,6 +802,7 @@ function debouncedRender() {
 function renderMarkdown() {
   const md = editor.value;
   charCount.textContent = md.length + ' chars';
+  applyRTLAutoFromText(md);
   preview.innerHTML = marked.parse(md);
   preview.querySelectorAll('pre code').forEach(block => {
     if (!block.classList.contains('hljs')) hljs.highlightElement(block);
@@ -720,6 +820,24 @@ function applyDirAuto(root) {
   root.querySelectorAll(sel).forEach(el => {
     if (!el.hasAttribute('dir')) el.setAttribute('dir', 'auto');
   });
+}
+
+// Detect if Arabic is dominant in the text; flip body to RTL-default UI hint.
+const ARABIC_RE = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/g;
+const LATIN_RE  = /[A-Za-z]/g;
+function isArabicDominant(text) {
+  if (!text) return false;
+  const ar = (text.match(ARABIC_RE) || []).length;
+  const la = (text.match(LATIN_RE) || []).length;
+  if (ar + la < 3) return false;
+  return ar / (ar + la) >= 0.4;
+}
+function applyRTLAutoFromText(text) {
+  if (!CONFIG.rtlAuto) { document.body.classList.remove('rtl-default'); preview.setAttribute('dir','auto'); return; }
+  const rtl = isArabicDominant(text);
+  document.body.classList.toggle('rtl-default', rtl);
+  preview.setAttribute('dir', rtl ? 'rtl' : 'auto');
+  editor.setAttribute('dir', rtl ? 'rtl' : 'auto');
 }
 
 // ============ SECTION WRAPPING ============
@@ -788,7 +906,9 @@ async function captureElement(el) {
   el.style.maxWidth = CONFIG.maxWidth + 'px';
   el.style.fontSize = CONFIG.fontSize + 'px';
   // Horizontal padding only — zero vertical so the image hugs the text top/bottom.
-  el.style.padding = '0 ' + CONFIG.padding + 'px';
+  // Tighter padding for individual sections — keeps Anki cards compact.
+  const sectionPad = Math.max(0, Math.round(CONFIG.padding * 0.6));
+  el.style.padding = '0 ' + sectionPad + 'px';
   el.style.border = 'none';
   el.style.borderRadius = '0';
   el.style.margin = '0';
@@ -972,15 +1092,19 @@ function updateSetting(type) {
   if (type === 'scale') {
     CONFIG.scale = parseFloat(document.getElementById('scaleSlider').value);
     document.getElementById('scaleValue').textContent = CONFIG.scale + 'x';
+    try { localStorage.setItem('md-anki-scale', String(CONFIG.scale)); } catch(e) {}
   } else if (type === 'width') {
     CONFIG.maxWidth = parseInt(document.getElementById('widthSlider').value);
     document.getElementById('widthValue').textContent = CONFIG.maxWidth + 'px';
+    try { localStorage.setItem('md-anki-width', String(CONFIG.maxWidth)); } catch(e) {}
   } else if (type === 'fontSize') {
     CONFIG.fontSize = parseInt(document.getElementById('fontSizeSlider').value);
     document.getElementById('fontSizeValue').textContent = CONFIG.fontSize + 'px';
+    try { localStorage.setItem('md-anki-fontsize', String(CONFIG.fontSize)); } catch(e) {}
   } else if (type === 'padding') {
     CONFIG.padding = parseInt(document.getElementById('paddingSlider').value);
     document.getElementById('paddingValue').textContent = CONFIG.padding + 'px';
+    try { localStorage.setItem('md-anki-padding', String(CONFIG.padding)); } catch(e) {}
   }
 }
 function formatKeyName(k) {
@@ -991,38 +1115,58 @@ function formatKeyName(k) {
 function applySectionActionsVisibility() {
   document.body.classList.toggle('no-section-actions', !CONFIG.sectionActions);
 }
+function bindKeyCapture(btn, valEl, configKey, storageKey) {
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    const original = btn.textContent;
+    btn.textContent = '... اضغط أي زر الآن ...';
+    btn.disabled = true;
+    const capture = (ev) => {
+      ev.preventDefault(); ev.stopPropagation();
+      CONFIG[configKey] = ev.key;
+      try { localStorage.setItem(storageKey, ev.key); } catch(e) {}
+      if (valEl) valEl.textContent = formatKeyName(ev.key);
+      btn.textContent = original;
+      btn.disabled = false;
+      window.removeEventListener('keydown', capture, true);
+    };
+    window.addEventListener('keydown', capture, true);
+  });
+}
 document.addEventListener('DOMContentLoaded', () => {
   const syncEl = document.getElementById('syncScrollToggle');
   const arrEl = document.getElementById('arrowToggle');
+  const rtlEl = document.getElementById('rtlAutoToggle');
   const secEl = document.getElementById('sectionActionsToggle');
   const magicBtn = document.getElementById('magicKeyBtn');
   const magicVal = document.getElementById('magicKeyValue');
+  const secKeyBtn = document.getElementById('sectionKeyBtn');
+  const secKeyVal = document.getElementById('sectionKeyValue');
   if (magicVal) magicVal.textContent = formatKeyName(CONFIG.magicKey);
+  if (secKeyVal) secKeyVal.textContent = formatKeyName(CONFIG.sectionCopyKey);
   if (syncEl) syncEl.addEventListener('change', () => { CONFIG.syncScroll = syncEl.checked; try{localStorage.setItem('md-anki-sync', syncEl.checked?'1':'0');}catch(e){} });
   if (arrEl) arrEl.addEventListener('change', () => { CONFIG.smartArrows = arrEl.checked; try{localStorage.setItem('md-anki-arrows', arrEl.checked?'1':'0');}catch(e){} renderMarkdown(); });
+  if (rtlEl) rtlEl.addEventListener('change', () => { CONFIG.rtlAuto = rtlEl.checked; try{localStorage.setItem('md-anki-rtlauto', rtlEl.checked?'1':'0');}catch(e){} renderMarkdown(); });
   if (secEl) secEl.addEventListener('change', () => {
     CONFIG.sectionActions = secEl.checked;
     try{localStorage.setItem('md-anki-secactions', secEl.checked?'1':'0');}catch(e){}
     applySectionActionsVisibility();
   });
-  if (magicBtn) {
-    magicBtn.addEventListener('click', () => {
-      const original = magicBtn.textContent;
-      magicBtn.textContent = '... اضغط أي زر الآن (Esc للإلغاء عبر Escape نفسها) ...';
-      magicBtn.disabled = true;
-      const capture = (ev) => {
-        ev.preventDefault(); ev.stopPropagation();
-        CONFIG.magicKey = ev.key;
-        try { localStorage.setItem('md-anki-magickey', ev.key); } catch(e) {}
-        if (magicVal) magicVal.textContent = formatKeyName(ev.key);
-        magicBtn.textContent = original;
-        magicBtn.disabled = false;
-        window.removeEventListener('keydown', capture, true);
-      };
-      window.addEventListener('keydown', capture, true);
-    });
-  }
+  bindKeyCapture(magicBtn, magicVal, 'magicKey', 'md-anki-magickey');
+  bindKeyCapture(secKeyBtn, secKeyVal, 'sectionCopyKey', 'md-anki-seckey');
   applySectionActionsVisibility();
+});
+
+// Track hovered section for the section-copy hotkey.
+let hoveredSection = null;
+document.addEventListener('mouseover', (e) => {
+  const w = e.target.closest && e.target.closest('.section-wrapper');
+  if (w) hoveredSection = w;
+});
+document.addEventListener('mouseout', (e) => {
+  if (!e.relatedTarget || !e.relatedTarget.closest || !e.relatedTarget.closest('.section-wrapper')) {
+    hoveredSection = null;
+  }
 });
 
 // ============ TOAST ============
@@ -1118,11 +1262,18 @@ editor.addEventListener('keydown', (e) => {
   }
 });
 document.addEventListener('keydown', (e) => {
-  if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); saveImage(); }
-  if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'c' || e.key === 'C')) { e.preventDefault(); copyImage(); }
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); saveImage(); return; }
+  if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'c' || e.key === 'C')) { e.preventDefault(); copyImage(); return; }
+  const t = e.target;
+  const inField = t && (t.tagName === 'INPUT' || t.tagName === 'BUTTON' || t === editor);
+  // Section-copy hotkey: only when hovering a section and not typing.
+  if (CONFIG.sectionCopyKey && e.key && e.key.toLowerCase() === String(CONFIG.sectionCopyKey).toLowerCase()
+      && !e.ctrlKey && !e.metaKey && !e.altKey && !inField && hoveredSection) {
+    e.preventDefault();
+    copySection(hoveredSection);
+    return;
+  }
   if (e.key === CONFIG.magicKey) {
-    const t = e.target;
-    const inField = t && (t.tagName === 'INPUT' || t.tagName === 'BUTTON');
     if (CONFIG.magicKey !== 'Escape' && t === editor) return;
     if (inField && CONFIG.magicKey !== 'Escape') return;
     e.preventDefault();
@@ -1144,6 +1295,7 @@ async function magicPasteFromClipboard() {
     wasEmpty = false;
     renderMarkdown();
     saveToStorage();
+    pushHistory(text);
     setMode('preview');
     showToast('✨ Pasted from clipboard', 'success');
   } catch(err) {
@@ -1153,12 +1305,81 @@ async function magicPasteFromClipboard() {
 
 // ============ PASTE → AUTO PREVIEW ============
 editor.addEventListener('paste', (e) => {
-  // Wait one tick so the pasted content reaches the textarea, then render and switch.
   setTimeout(() => {
     renderMarkdown();
-    if (editor.value.trim().length > 0) setMode('preview');
+    if (editor.value.trim().length > 0) {
+      pushHistory(editor.value);
+      setMode('preview');
+    }
   }, 0);
 });
+
+// ============ HISTORY (localStorage, free, no DB) ============
+function loadHistory() {
+  try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); }
+  catch(e) { return []; }
+}
+function saveHistory(arr) {
+  try { localStorage.setItem(HISTORY_KEY, JSON.stringify(arr.slice(0, HISTORY_MAX))); } catch(e) {}
+}
+function pushHistory(text) {
+  if (!text || !text.trim() || text.trim().length < 5) return;
+  const arr = loadHistory();
+  // Dedupe: if newest entry is identical, skip.
+  if (arr.length && arr[0].content === text) return;
+  arr.unshift({ ts: Date.now(), content: text });
+  saveHistory(arr);
+}
+function formatTs(ts) {
+  const d = new Date(ts);
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function renderHistory() {
+  const list = document.getElementById('historyList');
+  const arr = loadHistory();
+  if (!arr.length) {
+    list.innerHTML = '<div class="history-empty">لا يوجد سجل بعد. سيتم حفظ كل لصقة تلقائياً هنا.</div>';
+    return;
+  }
+  list.innerHTML = '';
+  arr.forEach((item, idx) => {
+    const row = document.createElement('div');
+    row.className = 'history-item';
+    const body = document.createElement('div');
+    body.className = 'history-item-body';
+    const prev = document.createElement('div');
+    prev.className = 'history-item-preview';
+    prev.textContent = item.content.replace(/\s+/g, ' ').slice(0, 100);
+    const meta = document.createElement('div');
+    meta.className = 'history-item-meta';
+    meta.textContent = formatTs(item.ts) + ' · ' + item.content.length + ' chars';
+    body.appendChild(prev); body.appendChild(meta);
+    const del = document.createElement('button');
+    del.className = 'history-item-del';
+    del.textContent = '✕';
+    del.title = 'حذف';
+    del.onclick = (e) => { e.stopPropagation(); const a = loadHistory(); a.splice(idx, 1); saveHistory(a); renderHistory(); };
+    row.appendChild(body); row.appendChild(del);
+    row.onclick = () => {
+      editor.value = item.content;
+      wasEmpty = false;
+      renderMarkdown();
+      saveToStorage();
+      toggleHistory();
+      setMode('preview');
+      showToast('✅ تم تحميل العنصر', 'success');
+    };
+    list.appendChild(row);
+  });
+}
+function openHistory() { renderHistory(); document.getElementById('historyModal').classList.add('open'); }
+function toggleHistory() { document.getElementById('historyModal').classList.toggle('open'); }
+function closeHistoryOutside(e) { if (e.target && e.target.id === 'historyModal') e.target.classList.remove('open'); }
+function clearHistory() {
+  if (!confirm('مسح كل السجل؟ لا يمكن التراجع.')) return;
+  saveHistory([]); renderHistory(); showToast('🗑️ تم المسح', 'neutral');
+}
 
 // ============ EMPTY EDITOR → AUTO OPEN EDITOR ============
 let wasEmpty = false;
@@ -1215,6 +1436,26 @@ function loadFromStorage() {
       CONFIG.magicKey = mk;
       const mv = document.getElementById('magicKeyValue');
       if (mv) mv.textContent = (mk === ' ' ? 'Space' : (mk.length === 1 ? mk.toUpperCase() : mk));
+    }
+    const sk = localStorage.getItem('md-anki-seckey');
+    if (sk) {
+      CONFIG.sectionCopyKey = sk;
+      const sv = document.getElementById('sectionKeyValue');
+      if (sv) sv.textContent = (sk === ' ' ? 'Space' : (sk.length === 1 ? sk.toUpperCase() : sk));
+    }
+    const rtl = localStorage.getItem('md-anki-rtlauto');
+    if (rtl !== null) {
+      CONFIG.rtlAuto = rtl === '1';
+      const el = document.getElementById('rtlAutoToggle');
+      if (el) el.checked = CONFIG.rtlAuto;
+    }
+    const pad = localStorage.getItem('md-anki-padding');
+    if (pad !== null) {
+      CONFIG.padding = parseInt(pad);
+      const ps = document.getElementById('paddingSlider');
+      const pv = document.getElementById('paddingValue');
+      if (ps) ps.value = CONFIG.padding;
+      if (pv) pv.textContent = CONFIG.padding + 'px';
     }
     document.body.classList.toggle('no-section-actions', !CONFIG.sectionActions);
   } catch(e) {}
