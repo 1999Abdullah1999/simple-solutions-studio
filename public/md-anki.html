@@ -888,19 +888,21 @@ function wrapSections() {
   const children = Array.from(preview.children);
   if (children.length === 0) return;
 
-  const hasHeadings = children.some(c => /^H[1-3]$/.test(c.tagName));
-  if (!hasHeadings) return;
-
   const groups = [];
-  let currentGroup = [];
-  children.forEach(child => {
-    const tag = child.tagName;
-    if ((tag === 'H1' || tag === 'H2' || tag === 'H3') && currentGroup.length > 0) {
-      groups.push(currentGroup); currentGroup = [];
-    }
-    currentGroup.push(child);
-  });
-  if (currentGroup.length > 0) groups.push(currentGroup);
+  const hasHeadings = children.some(c => /^H[1-3]$/.test(c.tagName));
+  if (hasHeadings) {
+    let currentGroup = [];
+    children.forEach(child => {
+      const tag = child.tagName;
+      if ((tag === 'H1' || tag === 'H2' || tag === 'H3') && currentGroup.length > 0) {
+        groups.push(currentGroup); currentGroup = [];
+      }
+      currentGroup.push(child);
+    });
+    if (currentGroup.length > 0) groups.push(currentGroup);
+  } else {
+    children.forEach(child => groups.push([child]));
+  }
 
   preview.innerHTML = '';
   groups.forEach(group => {
