@@ -314,11 +314,13 @@ body.mode-split .editor-panel { border-right: 1px solid var(--border); }
   background: var(--section-hover);
 }
 .section-actions {
-  position: absolute;
+  position: sticky;
   top: 6px;
-  inset-inline-end: 6px;
   display: none;
   gap: 4px;
+  width: max-content;
+  margin-inline-start: auto;
+  margin-bottom: -28px;
   z-index: 30;
   pointer-events: auto;
 }
@@ -342,12 +344,6 @@ body.no-section-actions .section-actions { display: none !important; }
 .section-btn.section-save { background: var(--accent); }
 
 @media (max-width: 767px), (hover: none), (pointer: coarse) {
-  .section-actions {
-    position: sticky;
-    top: 6px;
-    justify-content: flex-end;
-    margin-bottom: 4px;
-  }
   .section-wrapper.is-active .section-actions { display: flex; }
 }
 
