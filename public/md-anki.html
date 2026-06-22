@@ -906,7 +906,9 @@ async function captureElement(el) {
   el.style.maxWidth = CONFIG.maxWidth + 'px';
   el.style.fontSize = CONFIG.fontSize + 'px';
   // Horizontal padding only — zero vertical so the image hugs the text top/bottom.
-  el.style.padding = '0 ' + CONFIG.padding + 'px';
+  // Tighter padding for individual sections — keeps Anki cards compact.
+  const sectionPad = Math.max(0, Math.round(CONFIG.padding * 0.6));
+  el.style.padding = '0 ' + sectionPad + 'px';
   el.style.border = 'none';
   el.style.borderRadius = '0';
   el.style.margin = '0';
