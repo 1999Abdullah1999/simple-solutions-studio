@@ -584,12 +584,13 @@ body.rtl-default #editor { direction: rtl; text-align: right; }
 <!-- ============ HISTORY MODAL ============ -->
 <div class="modal-overlay" id="historyModal" onclick="closeHistoryOutside(event)">
   <div class="modal-panel" style="max-width:560px;">
-    <div class="modal-title">📜 السجل (آخر اللصقات)</div>
+    <div class="modal-title">📜 السجل (آخر اللصقات) <span id="historySyncBadge" style="font-size:0.65rem;font-weight:500;color:var(--text-secondary);margin-inline-start:6px;"></span></div>
     <div style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:8px;">
-      اضغط أي عنصر لتحميله في المحرر. محفوظ محلياً في متصفحك فقط — مجاناً وبدون قاعدة بيانات.
+      اضغط أي عنصر لتحميله في المحرر. عند تفعيل JSONBin من الإعدادات، يتم المزامنة بين كل أجهزتك.
     </div>
     <div class="history-list" id="historyList"></div>
     <div style="display:flex;gap:8px;">
+      <button class="header-btn" style="flex:1;justify-content:center;" onclick="syncHistoryNow()">🔄 مزامنة</button>
       <button class="header-btn btn-clear" style="flex:1;justify-content:center;" onclick="clearHistory()">🗑️ مسح الكل</button>
       <button class="modal-done-btn" style="flex:1;margin-top:0;" onclick="toggleHistory()">إغلاق</button>
     </div>
