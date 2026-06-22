@@ -1111,38 +1111,58 @@ function formatKeyName(k) {
 function applySectionActionsVisibility() {
   document.body.classList.toggle('no-section-actions', !CONFIG.sectionActions);
 }
+function bindKeyCapture(btn, valEl, configKey, storageKey) {
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    const original = btn.textContent;
+    btn.textContent = '... اضغط أي زر الآن ...';
+    btn.disabled = true;
+    const capture = (ev) => {
+      ev.preventDefault(); ev.stopPropagation();
+      CONFIG[configKey] = ev.key;
+      try { localStorage.setItem(storageKey, ev.key); } catch(e) {}
+      if (valEl) valEl.textContent = formatKeyName(ev.key);
+      btn.textContent = original;
+      btn.disabled = false;
+      window.removeEventListener('keydown', capture, true);
+    };
+    window.addEventListener('keydown', capture, true);
+  });
+}
 document.addEventListener('DOMContentLoaded', () => {
   const syncEl = document.getElementById('syncScrollToggle');
   const arrEl = document.getElementById('arrowToggle');
+  const rtlEl = document.getElementById('rtlAutoToggle');
   const secEl = document.getElementById('sectionActionsToggle');
   const magicBtn = document.getElementById('magicKeyBtn');
   const magicVal = document.getElementById('magicKeyValue');
+  const secKeyBtn = document.getElementById('sectionKeyBtn');
+  const secKeyVal = document.getElementById('sectionKeyValue');
   if (magicVal) magicVal.textContent = formatKeyName(CONFIG.magicKey);
+  if (secKeyVal) secKeyVal.textContent = formatKeyName(CONFIG.sectionCopyKey);
   if (syncEl) syncEl.addEventListener('change', () => { CONFIG.syncScroll = syncEl.checked; try{localStorage.setItem('md-anki-sync', syncEl.checked?'1':'0');}catch(e){} });
   if (arrEl) arrEl.addEventListener('change', () => { CONFIG.smartArrows = arrEl.checked; try{localStorage.setItem('md-anki-arrows', arrEl.checked?'1':'0');}catch(e){} renderMarkdown(); });
+  if (rtlEl) rtlEl.addEventListener('change', () => { CONFIG.rtlAuto = rtlEl.checked; try{localStorage.setItem('md-anki-rtlauto', rtlEl.checked?'1':'0');}catch(e){} renderMarkdown(); });
   if (secEl) secEl.addEventListener('change', () => {
     CONFIG.sectionActions = secEl.checked;
     try{localStorage.setItem('md-anki-secactions', secEl.checked?'1':'0');}catch(e){}
     applySectionActionsVisibility();
   });
-  if (magicBtn) {
-    magicBtn.addEventListener('click', () => {
-      const original = magicBtn.textContent;
-      magicBtn.textContent = '... اضغط أي زر الآن (Esc للإلغاء عبر Escape نفسها) ...';
-      magicBtn.disabled = true;
-      const capture = (ev) => {
-        ev.preventDefault(); ev.stopPropagation();
-        CONFIG.magicKey = ev.key;
-        try { localStorage.setItem('md-anki-magickey', ev.key); } catch(e) {}
-        if (magicVal) magicVal.textContent = formatKeyName(ev.key);
-        magicBtn.textContent = original;
-        magicBtn.disabled = false;
-        window.removeEventListener('keydown', capture, true);
-      };
-      window.addEventListener('keydown', capture, true);
-    });
-  }
+  bindKeyCapture(magicBtn, magicVal, 'magicKey', 'md-anki-magickey');
+  bindKeyCapture(secKeyBtn, secKeyVal, 'sectionCopyKey', 'md-anki-seckey');
   applySectionActionsVisibility();
+});
+
+// Track hovered section for the section-copy hotkey.
+let hoveredSection = null;
+document.addEventListener('mouseover', (e) => {
+  const w = e.target.closest && e.target.closest('.section-wrapper');
+  if (w) hoveredSection = w;
+});
+document.addEventListener('mouseout', (e) => {
+  if (!e.relatedTarget || !e.relatedTarget.closest || !e.relatedTarget.closest('.section-wrapper')) {
+    hoveredSection = null;
+  }
 });
 
 // ============ TOAST ============
