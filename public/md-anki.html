@@ -1433,6 +1433,26 @@ function loadFromStorage() {
       const mv = document.getElementById('magicKeyValue');
       if (mv) mv.textContent = (mk === ' ' ? 'Space' : (mk.length === 1 ? mk.toUpperCase() : mk));
     }
+    const sk = localStorage.getItem('md-anki-seckey');
+    if (sk) {
+      CONFIG.sectionCopyKey = sk;
+      const sv = document.getElementById('sectionKeyValue');
+      if (sv) sv.textContent = (sk === ' ' ? 'Space' : (sk.length === 1 ? sk.toUpperCase() : sk));
+    }
+    const rtl = localStorage.getItem('md-anki-rtlauto');
+    if (rtl !== null) {
+      CONFIG.rtlAuto = rtl === '1';
+      const el = document.getElementById('rtlAutoToggle');
+      if (el) el.checked = CONFIG.rtlAuto;
+    }
+    const pad = localStorage.getItem('md-anki-padding');
+    if (pad !== null) {
+      CONFIG.padding = parseInt(pad);
+      const ps = document.getElementById('paddingSlider');
+      const pv = document.getElementById('paddingValue');
+      if (ps) ps.value = CONFIG.padding;
+      if (pv) pv.textContent = CONFIG.padding + 'px';
+    }
     document.body.classList.toggle('no-section-actions', !CONFIG.sectionActions);
   } catch(e) {}
 }
