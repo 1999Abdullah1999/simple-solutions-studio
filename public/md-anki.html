@@ -562,6 +562,21 @@ body.rtl-default #editor { direction: rtl; text-align: right; }
       </div>
     </div>
 
+    <div class="setting-row" style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px;">
+      <div class="setting-label"><span>☁️ مزامنة السجل (JSONBin)</span><span class="setting-value" id="jsonbinStatus">محلي فقط</span></div>
+      <div style="font-size:0.72rem;color:var(--text-secondary);margin:4px 0 8px;line-height:1.6;">
+        مجاني بالكامل. ادخل على <a href="https://jsonbin.io" target="_blank" rel="noopener" style="color:var(--accent);">jsonbin.io</a> → سجّل → Account → انسخ <b>X-MASTER-KEY</b> والصقه هنا، ثم اضغط "إنشاء Bin جديد". هتقدر تفتح السجل من أي جهاز.
+      </div>
+      <input type="password" id="jsonbinKey" placeholder="X-Master-Key" autocomplete="off"
+        style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:0.8rem;font-family:monospace;">
+      <input type="text" id="jsonbinBin" placeholder="Bin ID (اختياري — أنشئ تلقائياً)" autocomplete="off"
+        style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:0.8rem;font-family:monospace;margin-top:6px;">
+      <div style="display:flex;gap:6px;margin-top:8px;">
+        <button type="button" class="header-btn" style="flex:1;justify-content:center;" onclick="jsonbinCreateBin()">➕ إنشاء Bin جديد</button>
+        <button type="button" class="header-btn" style="flex:1;justify-content:center;" onclick="jsonbinTest()">🔌 اختبار + مزامنة</button>
+      </div>
+    </div>
+
     <button class="modal-done-btn" onclick="toggleSettings()">Done</button>
   </div>
 </div>
