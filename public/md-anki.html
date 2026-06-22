@@ -1258,11 +1258,18 @@ editor.addEventListener('keydown', (e) => {
   }
 });
 document.addEventListener('keydown', (e) => {
-  if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); saveImage(); }
-  if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'c' || e.key === 'C')) { e.preventDefault(); copyImage(); }
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); saveImage(); return; }
+  if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'c' || e.key === 'C')) { e.preventDefault(); copyImage(); return; }
+  const t = e.target;
+  const inField = t && (t.tagName === 'INPUT' || t.tagName === 'BUTTON' || t === editor);
+  // Section-copy hotkey: only when hovering a section and not typing.
+  if (CONFIG.sectionCopyKey && e.key && e.key.toLowerCase() === String(CONFIG.sectionCopyKey).toLowerCase()
+      && !e.ctrlKey && !e.metaKey && !e.altKey && !inField && hoveredSection) {
+    e.preventDefault();
+    copySection(hoveredSection);
+    return;
+  }
   if (e.key === CONFIG.magicKey) {
-    const t = e.target;
-    const inField = t && (t.tagName === 'INPUT' || t.tagName === 'BUTTON');
     if (CONFIG.magicKey !== 'Escape' && t === editor) return;
     if (inField && CONFIG.magicKey !== 'Escape') return;
     e.preventDefault();
@@ -1284,6 +1291,7 @@ async function magicPasteFromClipboard() {
     wasEmpty = false;
     renderMarkdown();
     saveToStorage();
+    pushHistory(text);
     setMode('preview');
     showToast('✨ Pasted from clipboard', 'success');
   } catch(err) {
@@ -1293,12 +1301,81 @@ async function magicPasteFromClipboard() {
 
 // ============ PASTE → AUTO PREVIEW ============
 editor.addEventListener('paste', (e) => {
-  // Wait one tick so the pasted content reaches the textarea, then render and switch.
   setTimeout(() => {
     renderMarkdown();
-    if (editor.value.trim().length > 0) setMode('preview');
+    if (editor.value.trim().length > 0) {
+      pushHistory(editor.value);
+      setMode('preview');
+    }
   }, 0);
 });
+
+// ============ HISTORY (localStorage, free, no DB) ============
+function loadHistory() {
+  try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); }
+  catch(e) { return []; }
+}
+function saveHistory(arr) {
+  try { localStorage.setItem(HISTORY_KEY, JSON.stringify(arr.slice(0, HISTORY_MAX))); } catch(e) {}
+}
+function pushHistory(text) {
+  if (!text || !text.trim() || text.trim().length < 5) return;
+  const arr = loadHistory();
+  // Dedupe: if newest entry is identical, skip.
+  if (arr.length && arr[0].content === text) return;
+  arr.unshift({ ts: Date.now(), content: text });
+  saveHistory(arr);
+}
+function formatTs(ts) {
+  const d = new Date(ts);
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function renderHistory() {
+  const list = document.getElementById('historyList');
+  const arr = loadHistory();
+  if (!arr.length) {
+    list.innerHTML = '<div class="history-empty">لا يوجد سجل بعد. سيتم حفظ كل لصقة تلقائياً هنا.</div>';
+    return;
+  }
+  list.innerHTML = '';
+  arr.forEach((item, idx) => {
+    const row = document.createElement('div');
+    row.className = 'history-item';
+    const body = document.createElement('div');
+    body.className = 'history-item-body';
+    const prev = document.createElement('div');
+    prev.className = 'history-item-preview';
+    prev.textContent = item.content.replace(/\s+/g, ' ').slice(0, 100);
+    const meta = document.createElement('div');
+    meta.className = 'history-item-meta';
+    meta.textContent = formatTs(item.ts) + ' · ' + item.content.length + ' chars';
+    body.appendChild(prev); body.appendChild(meta);
+    const del = document.createElement('button');
+    del.className = 'history-item-del';
+    del.textContent = '✕';
+    del.title = 'حذف';
+    del.onclick = (e) => { e.stopPropagation(); const a = loadHistory(); a.splice(idx, 1); saveHistory(a); renderHistory(); };
+    row.appendChild(body); row.appendChild(del);
+    row.onclick = () => {
+      editor.value = item.content;
+      wasEmpty = false;
+      renderMarkdown();
+      saveToStorage();
+      toggleHistory();
+      setMode('preview');
+      showToast('✅ تم تحميل العنصر', 'success');
+    };
+    list.appendChild(row);
+  });
+}
+function openHistory() { renderHistory(); document.getElementById('historyModal').classList.add('open'); }
+function toggleHistory() { document.getElementById('historyModal').classList.toggle('open'); }
+function closeHistoryOutside(e) { if (e.target && e.target.id === 'historyModal') e.target.classList.remove('open'); }
+function clearHistory() {
+  if (!confirm('مسح كل السجل؟ لا يمكن التراجع.')) return;
+  saveHistory([]); renderHistory(); showToast('🗑️ تم المسح', 'neutral');
+}
 
 // ============ EMPTY EDITOR → AUTO OPEN EDITOR ============
 let wasEmpty = false;
