@@ -1,0 +1,9 @@
+{
+  "buildCommand": "echo 'static deploy - no build needed'",
+  "outputDirectory": "public",
+  "framework": null,
+  "cleanUrls": true,
+  "rewrites": [
+    { "source": "/", "destination": "/md-anki.html" }
+  ]
+}
