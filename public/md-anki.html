@@ -1224,19 +1224,22 @@ document.addEventListener('DOMContentLoaded', () => {
   bindKeyCapture(magicBtn, magicVal, 'magicKey', 'md-anki-magickey');
   bindKeyCapture(secKeyBtn, secKeyVal, 'sectionCopyKey', 'md-anki-seckey');
   applySectionActionsVisibility();
+  updateActiveSectionActions();
 });
 
 // Track hovered section for the section-copy hotkey.
 let hoveredSection = null;
 document.addEventListener('mouseover', (e) => {
   const w = e.target.closest && e.target.closest('.section-wrapper');
-  if (w) hoveredSection = w;
+  if (w) { hoveredSection = w; updateActiveSectionActions(); }
 });
 document.addEventListener('mouseout', (e) => {
   if (!e.relatedTarget || !e.relatedTarget.closest || !e.relatedTarget.closest('.section-wrapper')) {
     hoveredSection = null;
+    updateActiveSectionActions();
   }
 });
+previewScroll.addEventListener('scroll', () => requestAnimationFrame(updateActiveSectionActions), { passive: true });
 
 // ============ TOAST ============
 let toastTimer;
