@@ -1597,6 +1597,19 @@ function loadFromStorage() {
 editor.addEventListener('input', debouncedRender);
 loadFromStorage();
 renderMarkdown();
+
+// Init JSONBin settings fields
+(function initJsonbin() {
+  const k = jsonbinKey(), b = jsonbinBin();
+  const kEl = document.getElementById('jsonbinKey');
+  const bEl = document.getElementById('jsonbinBin');
+  if (kEl && k) kEl.value = k;
+  if (bEl && b) bEl.value = b;
+  if (kEl) kEl.addEventListener('change', () => { try { localStorage.setItem(JSONBIN_KEY_STORAGE, kEl.value.trim()); } catch(e) {} jsonbinUpdateStatus(); });
+  if (bEl) bEl.addEventListener('change', () => { try { localStorage.setItem(JSONBIN_BIN_STORAGE, bEl.value.trim()); } catch(e) {} jsonbinUpdateStatus(); });
+  jsonbinUpdateStatus();
+  if (jsonbinConfigured()) jsonbinPull(true);
+})();
 </script>
 </body>
 </html>
